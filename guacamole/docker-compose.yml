@@ -1,0 +1,30 @@
+version: "3.1"
+services:
+  guacamole:
+    image: oznu/guacamole
+    networks:
+      - traefik_proxy
+    container_name: guacamole
+    volumes:
+      - <my dir>/config:/config
+    restart: unless-stopped
+    environment:
+    # This enabled the duo authenticatiohn extension, and is optional
+      EXTENSIONS: auth-duo
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gm.entrypoints=http"
+      - "traefik.http.routers.gm.rule=Host(`<sub.mydomain>`)"
+      - "traefik.http.middlewares.gm-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.gm.middlewares=gm-https-redirect"
+      - "traefik.http.routers.gm-secure.entrypoints=https"
+      - "traefik.http.routers.gm-secure.rule=Host(`g<sub.mydomain>`)"
+      - "traefik.http.routers.gm-secure.tls=true"
+      - "traefik.http.routers.gm-secure.service=gm"
+      - "traefik.http.services.gm.loadbalancer.server.port=8080"
+      - "traefik.docker.network=traefik_proxy"
+      ' Only needed if you are using authelia, which I reccomend for this.
+      - 'traefik.http.routers.gm-secure.middlewares=authelia@docker'
+networks:
+  traefik_proxy:
+    external: true
