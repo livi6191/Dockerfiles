@@ -1,0 +1,30 @@
+---
+version: "3.1"
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    networks:
+      - traefik_proxy
+    container_name: uptime-kuma
+    volumes:
+      - <my dir>/data:/app/data
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.utk.entrypoints=http"
+      - "traefik.http.routers.utk.rule=Host(`<sub.mydomain>`)"
+      - "traefik.http.middlewares.utk-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.utk.middlewares=utk-https-redirect"
+      - "traefik.http.routers.utk-secure.entrypoints=https"
+      - "traefik.http.routers.utk-secure.rule=Host(`<sub.mydomain>`)"
+      - "traefik.http.routers.utk-secure.tls=true"
+      - "traefik.http.routers.utk-secure.service=utk"
+      - "traefik.http.services.utk.loadbalancer.server.port=3001"
+      - "traefik.docker.network=traefik_proxy"
+      # Only needed if you are going to use authelia
+      - "traefik.http.routers.utk-secure.middlewares=authelia@docker"
+    security_opt:
+      - no-new-privileges:true
+networks:
+  traefik_proxy:
+    external: true
