@@ -1,0 +1,32 @@
+version: "3"
+services:
+  heimdall:
+    image: linuxserver/heimdall
+    networks:
+      - traefik_proxy
+    container_name: heimdall
+    environment:
+    # your users uid and gid
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+    volumes:
+      - /home/stuart/docker/heimdall/config:/config
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.heimdall.entrypoints=http"
+      - "traefik.http.routers.heimdall.rule=Host(`<sub.mydomain>`)"
+      - "traefik.http.middlewares.heimdall-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.heimdall.middlewares=heimdall-https-redirect"
+      - "traefik.http.routers.heimdall-secure.entrypoints=https"
+      - "traefik.http.routers.heimdall-secure.rule=Host(`<sub.mydomain>`)"
+      - "traefik.http.routers.heimdall-secure.tls=true"
+      - "traefik.http.routers.heimdall-secure.service=heimdall"
+      - "traefik.http.services.heimdall.loadbalancer.server.port=80"
+      - "traefik.docker.network=traefik_proxy"
+      # only needed if you are using authelia
+      - "traefik.http.routers.heimdall-secure.middlewares=authelia@docker"
+networks:
+  traefik_proxy:
+    external: true
