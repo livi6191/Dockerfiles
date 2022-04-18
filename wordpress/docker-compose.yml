@@ -1,0 +1,56 @@
+version: '3.7'
+
+services:
+  db:
+    image: mariadb:latest
+    container_name: wp-db
+    volumes:
+      - "db-data:/var/lib/mysql"
+    networks:
+      - default
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: <Super secure password>
+      MYSQL_DATABASE: <database name>
+      MYSQL_USER: <database username>
+      MYSQL_PASSWORD: <secure password>
+
+  wordpress:
+    depends_on:
+      - db
+    build: ./
+    image: trafex/wordpress
+    container_name: wordpress
+    environment:
+      DB_HOST: db:3306
+      DB_NAME: <database name>
+      DB_USER: <Username>
+      DB_PASSWORD: <secure password>
+      WORDPRESS_SITE_URL: http://<my domain/ subdomain>
+      FS_METHOD: direct
+    volumes:
+      - "site-data:/var/www/wp-content"
+    networks:
+      - traefik_proxy
+      - default
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wordpress.entrypoints=http"
+      - "traefik.http.routers.wordpress.rule=Host(`<mydomain>`,`<mysubdomain`)"
+      - "traefik.http.middlewares.wordpress-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.wordpress.middlewares=wordpress-https-redirect"
+      - "traefik.http.routers.wordpress-secure.entrypoints=https"
+      - "traefik.http.routers.wordpress-secure.rule=Host(`<mydomain>`,`<mysubdomain`)"
+      - "traefik.http.routers.wordpress-secure.tls=true"
+      - "traefik.http.routers.wordpress-secure.service=wordpress"
+      - "traefik.http.services.wordpress.loadbalancer.server.port=80"
+      - "traefik.docker.network=traefik_proxy"
+
+volumes:
+  db-data:
+  site-data:
+
+networks:
+  traefik_proxy:
+    external: true
