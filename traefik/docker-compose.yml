@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - proxy
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - CF_API_EMAIL=<my cloudflare email>
+      #- CF_DNS_API_TOKEN=
+      - CF_API_KEY=
+      # be sure to use the correct one depending on if you are using a token or key
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - <mydir>/traefik.yml:/traefik.yml:ro
+      # acme.json must be set to 600 for file permissions
+      - <mydir>acme.json:/acme.json 
+      - <mydir>/config.yml:/config.yml:ro
+    command:
+      - --serversTransport.insecureSkipVerify=true
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http""
+      - "traefik.http.routers.traefik.rule=Host(`<sub.mydomain>`)"
+      # echo $(htpasswd -nb <USER> <PASSWORD>) | sed -e s/\\$/\\$\\$/g
+      #Replace <USER> with your username and <PASSWORD> with your password to be hashed.
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=Stuart:<basic Auth password"
+      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      - "traefik.http.routers.traefik-secure.rule=Host(`<sub.mydomain>`)"
+      - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].main=*.mydomain"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+      # only needed if you are using authelia
+      - "traefik.http.routers.traefik-secure.middlewares=authelia@docker"
+
+networks:
+  proxy:
